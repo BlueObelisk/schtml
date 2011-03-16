@@ -1,0 +1,60 @@
+div.jmol-container {
+    padding: 0;
+}
+
+div.jmol-image {
+    line-height: inherit;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+
+div.jmol-image img {
+    display: inline;
+    padding: 0;
+    margin: 0;
+}
+
+div.jmol-image div.jmol-caption {
+    background-color: #000;
+    cursor: pointer;
+    position: relative;
+    top: -3em;
+
+    /* The way to change overlay opacity is the follow properties. Opacity is a tricky issue due to
+        longtime IE abuse of it, so opacity is not offically supported - use at your own risk.
+        To play it safe, disable overlay opacity in IE. */
+    /* For Firefox/Opera/Safari/Chrome */
+    opacity: .4;
+    /* For IE 5-7 */
+    filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=40);
+    /* For IE 8 */
+    -MS-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=40)";
+}
+
+div.jmol-image:hover div.jmol-caption {
+    /* For Firefox/Opera/Safari/Chrome */
+    opacity: .8;
+    /* For IE 5-7 */
+    filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=80);
+    /* For IE 8 */
+    -MS-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
+}
+
+div.jmol-image div.jmol-caption p {
+    color: #ffffff;
+    line-height: 1em;
+    font-size: 140%;
+    font-weight: bold;
+    text-align: center;
+    z-index: 10;
+    margin: 0;
+    padding: 0.5em 0;
+}
+
+div.jmol-applet {
+    /*display: none;*/
+    width: 400px;
+    height: 400px;
+}
