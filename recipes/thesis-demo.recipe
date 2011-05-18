@@ -6,7 +6,7 @@ class Ontogenesis(BasicNewsRecipe):
 
 
     """
-    title          = u'[ktoc] test'
+    title          = u'The Hand Painted Films of Margaret Tait by Joss Winn'
     oldest_article = 10000
     max_articles_per_feed = 1000
 
