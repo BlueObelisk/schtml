@@ -1,0 +1,46 @@
+class Ontogenesis(BasicNewsRecipe):
+    title          = u'Ontogenesis'
+    oldest_article = 10000
+    max_articles_per_feed = 1000
+    feeds          = [(u'Ontogensis ToC', u'http://ontogenesis.knowledgeblog.org/table-of-contents')]
+   
+    remove_tags_before = dict(name='p', attrs={'class':'details_small'})
+    remove_tags_after  = dict(name='div', attrs={'class':'post_content'})
+    remove_tags = [  dict(name='div', attrs={'class':'rendition-links'})]
+    urls = []
+    def parse_index(self):
+        soup = self.index_to_soup(self.feeds[0][1])
+        articles = {} 
+        articles = []
+	#TODO: Talk to knowledgeBlog people about making this more 'semantic'
+        #Assuming that all the links in post content are part of ToC - need
+        #a more robust more meaningful way to do this
+        contents = soup.find(name="div", attrs={"class":"post"}).find("ul")
+	date = ""
+	description = ""
+	content = ""
+        for a in contents.findAll("a", href=True):
+             url = a['href']
+	     self.urls.append(url) #Todo - deal with multiple feeds
+             title = self.tag_to_string(a, use_alt=True).strip()
+             pubdate = ""
+             articles.append(dict(title=title, url=url, date=pubdate,
+                             description=description,
+                             content=content))
+        return [(self.title , articles)]
+
+    def postprocess_html(self, soup, first):
+        #Remove link back to this post - Calibre is breaking it anyway
+	meta = soup.find(name="p", attrs={"class": "details_small"})
+        stripped = self.tag_to_string(meta, use_alt=True).strip().encode("utf-8")
+	meta.replaceWith("<p class='details_small'>%s</p>" % stripped)
+	#Find links between posts in the same feed
+	for a in soup.findAll("a", href=True):
+		url = a['href']
+		if url in self.urls:
+                        #TODO: Assumption - there is only one feed
+			localLink = "../article_%s/index.html" % self.urls.index(url) 
+                        a['href'] = localLink
+			print "Found an internal link - changing %s to %s" % (url, localLink)
+                
+	return soup

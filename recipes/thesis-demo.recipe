@@ -1,0 +1,82 @@
+class Ontogenesis(BasicNewsRecipe):
+    """
+    Sample Calibre recipe for screen scraping a table-of-contents ORE resource map.
+    This uses the Scholarly HTML conventions for packaging: http://okfnpad.org/schtml-packaging
+    And for identifying post-content. http://okfnpad.org/schtml-core
+
+
+    """
+    title          = u'[ktoc] test'
+    oldest_article = 10000
+    max_articles_per_feed = 1000
+
+    feeds          = [(u'Test feed', u'http://anthologize.ptsefton.com/toc/')]
+    remove_tags_before = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
+    remove_tags_after  = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
+    remove_tags = [  dict(name='div', attrs={'class':'rendition-links'})] #ICE legacy
+    originalHost = "http://tait.josswinn.org/"
+    thisHost = "http://digressit.ptsefton.com/"
+    urls = []
+    feedsForUrls = dict()
+    def parse_index(self):
+        
+        feedNum = 0
+        #Todo - loop thru muliple feeds
+        soup = self.index_to_soup(self.feeds[feedNum][1])
+        
+        
+	#Loop thru all resource map nodes
+        contents = soup.findAll(True, attrs={"rel":"http://www.openarchives.org/ore/terms/describes"}) 
+        articleList = []
+	for rmNode in contents:
+		articles = []
+		titleNode = rmNode.find(True, attrs={"property":"http://purl.org/dc/terms/title"})
+		
+        	if titleNode:
+			feedTitle =  self.tag_to_string(titleNode, use_alt=True).strip()
+		else:
+			feedTitle = str(feedNum)
+		date = ""
+		description = ""
+		content = ""
+              
+                #FInd anything with a rel attribute of ore:aggregates - it's the aggregation that does the aggregating
+                #this thing we are processing is the resource map
+		for agg in rmNode.findAll(True, attrs={"rel":"http://www.openarchives.org/ore/terms/aggregates"}):
+           
+		     url = agg['resource']
+		     self.urls.append(url)
+		     self.feedsForUrls[url] = str(feedNum)
+		     title = self.tag_to_string(agg, use_alt=True).strip()
+		     pubdate = ""
+		     articles.append(dict(title=title, url=url, date=pubdate,
+		                     description=description,
+		                     content=content))
+        	articleList.append((feedTitle , articles))
+                feedNum = feedNum + 1
+	return articleList
+
+    def postprocess_html(self, soup, first):
+        print "XXXXXXXXXXXXXXXXXXXXXXXXX"
+        schtml = soup.find(True, attrs={"rel":"http://scholarly-html.org/schtml"})
+	#Scholarly HTML _should_ have a title
+	titleNode = schtml.find(True, attrs={"property":"http://purl.org/dc/terms/title"})
+        if titleNode:
+                print "Found title"
+		title = self.tag_to_string(titleNode, use_alt=True).strip()
+		if title=="":
+			title = titleNode['content']
+			if title == "":
+				title = self.defaultPageTitle;
+                titleNode.replaceWith("<h1 >%s</h1>" % title)
+        #And a date TODO
+
+        #And creators TODO
+	for a in schtml.findAll("a", href=True):
+		url = a['href']
+		if url in self.urls:
+			localLink = "../../feed_%s/article_%s/index.html" % (self.feedsForUrls[url], self.urls.index(url)) 
+                        a['href'] = localLink
+			print "Found an internal link - changing %s to %s" % (url, localLink)
+                
+	return soup
