@@ -1,4 +1,4 @@
-class Ontogenesis(BasicNewsRecipe):
+class ScHTMLResourceMap(BasicNewsRecipe):
     """
     Sample Calibre recipe for screen scraping a table-of-contents ORE resource map.
     This uses the Scholarly HTML conventions for packaging: http://okfnpad.org/schtml-packaging
@@ -13,9 +13,7 @@ class Ontogenesis(BasicNewsRecipe):
     feeds          = [(u'Test feed', u'http://anthologize.ptsefton.com/toc/')]
     remove_tags_before = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
     remove_tags_after  = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
-    remove_tags = [  dict(name='div', attrs={'class':'rendition-links'})] #ICE legacy
-    originalHost = "http://tait.josswinn.org/"
-    thisHost = "http://digressit.ptsefton.com/"
+    
     urls = []
     feedsForUrls = dict()
     def parse_index(self):
@@ -79,4 +77,4 @@ class Ontogenesis(BasicNewsRecipe):
                         a['href'] = localLink
 			print "Found an internal link - changing %s to %s" % (url, localLink)
                 
-	return soup
+	return schtml
