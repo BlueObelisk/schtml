@@ -11,12 +11,14 @@ class ScHTMLResourceMap(BasicNewsRecipe):
     max_articles_per_feed = 10000
 
     feeds          = [(u'all', u'http://ptsefton.com/toc')]
-    #remove_tags_before = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
-    #remove_tags_after  = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
+    remove_tags_before = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
+    remove_tags_after  = dict(name='div', attrs={"rel":"http://scholarly-html.org/schtml"})
     remove_tags = [  dict(name='div', attrs={'class':'rendition-links'})] #ICE legacy
    
     urls = []
     feedsForUrls = dict()
+
+    
     def parse_index(self):
         
         feedNum = 0
@@ -68,16 +70,21 @@ class ScHTMLResourceMap(BasicNewsRecipe):
 			title = titleNode['content']
 			if title == "":
 				title = self.defaultPageTitle;
-                titleNode.replaceWith("<h1 >%s</h1>" % title)
+                titleNode.replaceWith(u"<h1 >%s</h1>" % title)
         #And a date TODO
 
         #And creators TODO
 	for a in schtml.findAll("a", href=True):
 		url = a['href']
 		if url in self.urls:
-			localLink = "../../feed_%s/article_%s/index.html" % (self.feedsForUrls[url], self.urls.index(url)) 
+			localLink = u"../../feed_%s/article_%s/index.html" % (self.feedsForUrls[url], self.urls.index(url)) 
                         a['href'] = localLink
 			print "Found an internal link - changing %s to %s" % (url, localLink)
-        print schtml
+	#Lose all the WordPress padding
+        while schtml.parent.name == 'div':
+		schtml.parent.replaceWith(schtml)
+        
+        
+        
                 
-	return schtml
+	return soup

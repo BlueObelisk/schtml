@@ -25,6 +25,7 @@ class ScHTMLResourceMap(BasicNewsRecipe):
         
 	#Loop thru all resource map nodes
         contents = soup.findAll(True, attrs={"rel":"http://www.openarchives.org/ore/terms/describes"}) 
+       
         articleList = []
 	for rmNode in contents:
 		articles = []
@@ -55,26 +56,32 @@ class ScHTMLResourceMap(BasicNewsRecipe):
 	return articleList
 
     def postprocess_html(self, soup, first):
-        print "XXXXXXXXXXXXXXXXXXXXXXXXX"
+        
         schtml = soup.find(True, attrs={"rel":"http://scholarly-html.org/schtml"})
 	#Scholarly HTML _should_ have a title
 	titleNode = schtml.find(True, attrs={"property":"http://purl.org/dc/terms/title"})
         if titleNode:
-                print "Found title"
+                
 		title = self.tag_to_string(titleNode, use_alt=True).strip()
 		if title=="":
 			title = titleNode['content']
 			if title == "":
 				title = self.defaultPageTitle;
-                titleNode.replaceWith("<h1 >%s</h1>" % title)
+                titleNode.replaceWith(u"<h1 >%s</h1>" % title)
         #And a date TODO
 
         #And creators TODO
 	for a in schtml.findAll("a", href=True):
 		url = a['href']
 		if url in self.urls:
-			localLink = "../../feed_%s/article_%s/index.html" % (self.feedsForUrls[url], self.urls.index(url)) 
+			localLink = u"../../feed_%s/article_%s/index.html" % (self.feedsForUrls[url], self.urls.index(url)) 
                         a['href'] = localLink
 			print "Found an internal link - changing %s to %s" % (url, localLink)
+	#Lose all the WordPress padding
+        while schtml.parent.name == 'div':
+		schtml.parent.replaceWith(schtml)
+        
+        
+        
                 
-	return schtml
+	return soup
