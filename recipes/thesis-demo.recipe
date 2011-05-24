@@ -39,7 +39,7 @@ class ScHTMLResourceMap(BasicNewsRecipe):
 		description = ""
 		content = ""
               
-                #FInd anything with a rel attribute of ore:aggregates - it's the aggregation that does the aggregating
+                #Find anything with a rel attribute of ore:aggregates - it's the aggregation that does the aggregating
                 #this thing we are processing is the resource map
 		for agg in rmNode.findAll(True, attrs={"rel":"http://www.openarchives.org/ore/terms/aggregates"}):
            
