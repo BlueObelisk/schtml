@@ -17,9 +17,10 @@ class ScHTMLResourceMap(BasicNewsRecipe):
     urls = []
     feedsForUrls = dict()
     def parse_index(self):
-        
+	
+        print dir(self.web2disk_options)
         feedNum = 0
-        #Todo - loop thru muliple feeds
+      
         soup = self.index_to_soup(self.feeds[feedNum][1])
         
         
@@ -40,7 +41,7 @@ class ScHTMLResourceMap(BasicNewsRecipe):
 			author =  self.tag_to_string(authorNode, use_alt=True).strip()
 			if authorNode == "":
 				author= authorNode['content']
-                        print "XXXXXXXXXXXXXXXx - got author" + author
+                       
 		else:
 			author = ""
 		date = ""
@@ -52,13 +53,14 @@ class ScHTMLResourceMap(BasicNewsRecipe):
 		for agg in rmNode.findAll(True, attrs={"rel":"http://www.openarchives.org/ore/terms/aggregates"}):
            
 		     url = agg['resource']
-		     self.urls.append(url)
-		     self.feedsForUrls[url] = str(feedNum)
-		     title = self.tag_to_string(agg, use_alt=True).strip()
-		     pubdate = ""
-		     articles.append(dict(title=title, url=url, date=pubdate,
-		                     description=description,
-		                     content=content, author=author))
+		     if not url in self.urls:
+			     self.urls.append(url)
+			     self.feedsForUrls[url] = str(feedNum)
+			     title = self.tag_to_string(agg, use_alt=True).strip()
+			     pubdate = ""
+			     articles.append(dict(title=title, url=url, date=pubdate,
+				             description=description,
+				             content=content, author=author))
         	articleList.append((feedTitle , articles))
                 feedNum = feedNum + 1
 	return articleList
