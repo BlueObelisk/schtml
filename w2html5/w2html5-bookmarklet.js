@@ -9,7 +9,7 @@
  * Released under the Creative Commons Attribution 3.0 Unported License,
  * as defined here: http://creativecommons.org/licenses/by/3.0/
  *
- *  <a href="javascript:(function(){var head=document.getElementsByTagName('head')[0],script=document.createElement('script');script.type='text/javascript';script.src='https://bitbucket.org/wwmm/schtml/raw/e3e712c25960/w2html5/sw2html5-bookmarklet.js?' + Math.floor(Math.random()*99999);head.appendChild(script);})(); void 0">Word2HTML5</a>
+ *  <a href="javascript:(function(){var head=document.getElementsByTagName('head')[0],script=document.createElement('script');script.type='text/javascript';script.src='hhttp://tools.scholarlyhtml.org/w2html5/sw2html5-bookmarklet.js?' + Math.floor(Math.random()*99999);head.appendChild(script);})(); void 0">Word2HTML5</a>
  *
  */
  
@@ -18,8 +18,8 @@ window.bookmarklet = function(opts){fullFunc(opts)};
 // These are the styles, scripts and callbacks we include in our bookmarklet:
 window.bookmarklet({
  
-    css : ['https://bitbucket.org/wwmm/schtml/raw/e3e712c25960/w2html5/w2html5ext/w2html5.css'],
-    js  : ['https://bitbucket.org/wwmm/schtml/raw/e3e712c25960/w2html5/w2html5ext/w2html5.js'],    
+    css : ['http://tools.scholarlyhtml.org/w2html5/w2html5.css'],
+    js  : ['http://tools.scholarlyhtml.org/w2html5/w2html5ext/w2html5.js'],    
     jqpath : 'http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js', 
     ready : function(){
  
