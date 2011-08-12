@@ -9,7 +9,7 @@
     "content_scripts": [
     {
       "matches": ["file:///*"],
-      "js": ["jquery.min.js", "w2html5.js"],
+      "js": ["jquery.min.js", "w2html5.js", "w2html5-loader.js"],
        "css": ["w2html5.css"]
     }
   ]

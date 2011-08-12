@@ -11,4 +11,23 @@ ul {
   border-left: 3px solid #600;
 } 
 
+#paragraphify, #headingDemote, #headingPromote, #headingify {
+
+	color: #FF00FF;
+}
+
+h1 #headingPromote {
+ color: #000000	;
+}
+
+.toolbar {
+	border-top:1px solid red;
+	border-left:1px solid red;
+	border-right:1px solid red;
+	font-size: large;
+	
+}
+.button { 
+	border: 1px solid gray;
+}
 
