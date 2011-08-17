@@ -18,16 +18,16 @@ window.bookmarklet = function(opts){fullFunc(opts)};
 // These are the styles, scripts and callbacks we include in our bookmarklet:
 window.bookmarklet({
  
-    css : ['http://tools.scholarlyhtml.org/w2html5/w2html5.css'],
-    js  : ['http://tools.scholarlyhtml.org/w2html5/w2html5ext/w2html5.js'],    
+    css : ['http://tools.scholarlyhtml.org/w2html5/w2html5ext/w2html5.css', 'http://tools.scholarlyhtml.org/w2html5/w2html5ext/W3C-WD.css'],
+    js  : ['http://tools.scholarlyhtml.org/w2html5/w2html5ext/w2html5.js', "http://tools.scholarlyhtml.org/w2html5/w2html5ext/jszip.js"],    
     jqpath : 'http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js', 
     ready : function(){
 	 	
-		alert("Setting up");
+		
 		converter = word2HML5Factory($);
-		alert("converting...");
+		
 		converter.convert();
-		alert("Conversion complete");
+		
  
    	    }
 })

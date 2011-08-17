@@ -29,12 +29,18 @@ COPYRIGHT Peter Malcolm Sefton 2011
 
 
 function word2HML5Factory(jQ) {
+
 	word2html = {};
 	config = {};
         config.preMatch = /(courier)|(monospace)/i;
-			
-	config.headingMatch = /H(ead)?(ing)? ?(\d).*/i;
-        config.headingReplace = "h$3";
+	config.headingMatches = [
+		[/H(ead)?(ing)? ?1.*/i , "<h2>"],
+		[/H(ead)?(ing)? ?2.*/i , "<h3>"],
+		[/H(ead)?(ing)? ?3.*/i , "<h4>"],
+		[/H(ead)?(ing)? ?4.*/i , "<h5>"],
+		[/(mso)?title/i, "<h1 rel='title'>"]
+	]		
+	
 
 
 
@@ -46,17 +52,35 @@ function word2HML5Factory(jQ) {
 		var state = {};
 		state.indentStack = [0];
 	 	state.elementStack = [toppara];
+		state.headingLevelStack = [0];
+		
+		state.headingLevel = 0;
 		state.currentIndent = 0;
 		function setCurrentIndent(indent) {
 			state.currentIndent = indent;
 		}
 		state.setCurrentIndent = setCurrentIndent;
+
+		function setHeadingIndent(indent) {
+			state.headingLevel = indent;
+		}
+		state.setHeadingIndent = setCurrentIndent;
+
 		function nestingNeeded() {
 			//Test whether current left=margin indent means we should add some nesting
 			return(state.currentIndent > state.indentStack[state.indentStack.length-1]);
 		
 		}
 		state.nestingNeeded = nestingNeeded;
+
+		function headingNestingNeeded() {
+			//Test whether current left=margin indent means we should add some nesting
+			return(state.headingIndent > state.headingStack[state.headingStack.length-1]);
+		
+		}
+		state.headingNestingNeeded = headingNestingNeeded;
+
+
 		function levelDown() {
 			while (state.currentIndent < state.indentStack[state.indentStack.length-1]) {
 				popState();
@@ -64,20 +88,51 @@ function word2HML5Factory(jQ) {
 			
 		}
 		state.levelDown = levelDown;
-		function getCurrentElement() {
+
+		function headingLevelDown() {
+			while (state.headingLevel< state.headingStack[state.headingStack.length-1]) {
+				popHeadingState();
+			}
+			
+		}
+		state.headingLevelDown = headingLevelDown;
+
+		function getCurrentContainer() {
 			return state.elementStack[state.elementStack.length-1];
 		}
-		state.getCurrentElement = getCurrentElement;
+		state.getCurrentContainer = getCurrentContainer;
+		
+		function getHeadingContainer() {
+			return state.headingStack[state.headingStack.length-1];
+		}
+		state.getHeadingContainer = getHeadingContainer;
+		
 		function popState() {
 			state.indentStack.pop();
 			state.elementStack.pop();
 		}
 		state.popState = popState;
+
+		function popHeadingState() {
+			state.headingLevelStack.pop();
+			state.headingContainerStack.pop();
+		}
+		state.popHeadingState = popHeadingState;
+
+
 		function pushState(el) {
 			state.indentStack.push(state.currentIndent);
 			state.elementStack.push(el);
 		}
 		state.pushState = pushState;
+
+
+		function pusHeadingState(el) {
+			state.headingLevelStack.push(state.currentIndent);
+			state.headingContainerStack.push(el);
+		}
+		state.pusHeadingState = pusHeadingState;
+
 		function resetState() {
 			state.indentStack = [0];
 			state.elementStack = [state.elementStack[0]];
@@ -152,8 +207,9 @@ function word2HML5Factory(jQ) {
 	    
 	    function (index) {
 		var type = "p";
+                var tag = null;
 		if (index == 0)  {
-			jQ("body").prepend(state.getCurrentElement());
+			jQ("body").prepend(state.getCurrentContainer());
                         
 		}
 		classs = String(jQ(this).attr("class")).toLowerCase();
@@ -161,16 +217,21 @@ function word2HML5Factory(jQ) {
 	        nodeName = jQ(this).get(0).nodeName;
                 isHeading = false;
 		//Look for headings via paragraph style
-  		if (classs.search(config.headingMatch) > -1) {
-			tag = classs.replace(config.headingMatch, config.headingReplace);
-			type = "h";
-		}
-		
-
-                if (nodeName.search(/H\d/) == 0) {
+		config.headingMatches.forEach(
+			function (item) {
+				if (classs.search(item[0]) > -1) {
+					tag = classs.replace(item[0], item[1]);
+					type = "h";
+					state.resetState();
+				}
+			}
+		);
+  		
+		if (nodeName.search(/H\d/) == 0) {
 			state.resetState();
 			type = "h";
 		}
+		
 		else {
 			state.setCurrentIndent(parseFloat(jQ(this).css("margin-left")));
 		}
@@ -184,7 +245,10 @@ function word2HML5Factory(jQ) {
 			listType = classs.substr(3,1);	
 			if (listType == "n") {
 				listType = "1";
-			}	
+			}
+			else if (listType == "p") {
+				type="p";
+			}
 		} 
 	
 	 	if (type == "p") {
@@ -235,11 +299,11 @@ function word2HML5Factory(jQ) {
 		
 
 		state.levelDown(); //If we're embedded too far, fix that
-	
-		if (state.nestingNeeded()) {
+	        //TODO fix nestingNeeded the check for 'h' is a hack
+		if (!(type == "h") && state.nestingNeeded()) {
 		
 			//Put this inside the previous para element - we're going deeper
-			jQ(this).appendTo(state.getCurrentElement());
+			jQ(this).appendTo(state.getCurrentContainer());
 			if (type == "li") {
 		                if (listType == "b") {
 					jQ(this).wrap("<ul><li></li></ul>");
@@ -267,29 +331,51 @@ function word2HML5Factory(jQ) {
 			}
 			//All subsequent paras at the right level and type should go into this para
 		        //So remember it
-			//TODO - wrap this in a proper state object rather than the parallel arrays: FRAGILE!
+			
 			state.pushState(jQ(this).parent());
 		
 		
 		
 		}
 		else {
-		
+		      
 		
 			if (type == "li") {
-				jQ(this).appendTo(state.getCurrentElement().parent());
+				jQ(this).appendTo(state.getCurrentContainer().parent());
 				jQ(this).wrap("<li></li>");
+
 				getRidOfExplicitNumbering(jQ(this));
+				state.pushState(jQ(this).parent());
 			
 			}
 			else {
 
-				jQ(this).appendTo(state.getCurrentElement())		;
+				jQ(this).appendTo(state.getCurrentContainer());
 				if (type == "h") {
-					//It's a heading - this replace with stuff doesn't seem to work if you do it before moving the element
-					jQ(this).replaceWith("<" + tag + ">" + jQ(this).html() + "</" + tag + ">");
+					semantics = jQ(this).find("a[href^='http://schema.org/']");
+					if (semantics.length) {
+				
+						rel = semantics.attr("href");
+						
+						jQ(this).parent().attr("itemscope", "");
+						jQ(this).parent().attr("itemprop", rel);
+					}
+					if (tag) {
+						//It's a heading - this replace with stuff doesn't seem to work if you do it before moving the element
+						jQ(this).replaceWith( tag + jQ(this).html());
 
-				} 
+					} 
+					if (tag && !(tag.search(/title/))) {
+
+						//TODO sort out proper sectional nesting later
+						//jq(this).wrap("<section></section>");
+					}
+					
+			
+				}
+
+
+				
 				else if (type == "pre") {
 					//TODO: Get rid of this repetition (but note you have to add jQ(this) to para b4 wrapping or it won't work)
 					jQ(this).wrap("<pre></pre>");
@@ -308,15 +394,35 @@ function word2HML5Factory(jQ) {
     
 
   
-
+    function h1(){     
+	//TODO - split
+	headingify("h1",jQ(this));
+     }
+    function h2(){     
+	//TODO - split
+	headingify("h2",jQ(this));
+     }
+    function h3(){     
+	//TODO - split
+	headingify("h3",jQ(this));
+     }	
+     function h4(){     
+	//TODO - split
+	headingify("h4",jQ(this));
+     }
+     function h5(){     
+	//TODO - split
+	headingify("h5",jQ(this));
+     }	
+   function headingify(tag,element){     
+  
+	host = jQ(getpara(element));
+	splitStructure(host, tag);
 	
-   function headingify(){     
-	//TODO - work out our heading level
- 
-	host = jQ(this).parents("p");
-	host.wrap("<h1></h1>");
-	
-	host.parent().html(host.html());
+	host.wrap("<x></x>".replace(/x/,tag));
+      
+	host.parent().html(host.html()	);
+			
         makeEditable();
      }
 
@@ -335,9 +441,8 @@ function word2HML5Factory(jQ) {
     }
     
     function getpara(element) {
-	parent = element.parents("h1,h2,h3,h4,h5,p");
-	return parent;
-
+	
+	return element.parents("h1,h2,h3,h4,h5,p").first();	
     }
 
     function detachToolbar(){
@@ -357,6 +462,57 @@ function word2HML5Factory(jQ) {
 	}
         makeEditable();
      }
+     
+     function toHtml(element) {
+	return element.clone().wrap("<div></div>").parent().html();
+
+     }
+     function splitStructure(element) {
+         
+	//Make two copies of the parent and recurse until we hit the top level
+        //alert(element.parent("article,body").html());
+        //element = element.parent(); //Get me the LI
+        //alert(element.get(0).nodeName + " < " + element.parent().get(0).nodeName);
+	element.find(".toolbar").detach();
+        if (element.parent().filter("article,body").length == 0) {
+		
+               if (element.next("ul,ol,blockquote").length	) {
+			
+		splitStructure(element.next());
+		}	
+		
+	        var par = element.parent();
+           
+		var before = par.clone();
+		
+		before.empty();
+		var after = before.clone();
+		//Prev all in reverse doc order
+		element.prevAll().each(function() {
+			before.prepend(jQ(this));
+		});
+		
+
+		after.append(element.nextAll());
+		
+		
+		par.replaceWith(element);	
+		if (before.children().length) {
+			element.before(before);
+		}
+		if (after.children().length) {
+			element.after(after);
+		}
+		
+	
+		splitStructure(element);
+			
+	 }
+	
+	 
+
+	}
+ 
 
     function headingDemote(){     
 	host = getpara(jQ(this));
@@ -370,8 +526,8 @@ function word2HML5Factory(jQ) {
         makeEditable();
      }
       
-   function toolbarFactory() { 
-	var toolbar = jQ("<div class='toolbar'></div>");
+   function toolbarFactory(toolbarClass) { 
+	var toolbar = jQ("<span class='" + toolbarClass + "'></span>");
 	 	function addButton(title, text) {
 			
 			
@@ -394,101 +550,123 @@ function word2HML5Factory(jQ) {
         
 	detachToolbar();
    }
-   function demote() { //DEPRECATED (like, really)
-        para = getpara(jQ(this));
-	paraName = para.get(0).nodeName;
-	//There might be a classier algorithm but for now handle list items
-	//differently
-        if (para.parent("li").length) {
-          
-	     if (para.prev("p").length) {
-			//Not first  so we can indent it
-			para.wrap("<li></li>");
-			if (para.parent().parent("ul").length) {
-				para.wrap("<ul></ul>");
-
-			}
-			else {
-				para.wrap("<ol></ol>");
-			}
-		}
-	     else { //first paragraph
-			if(para.parent().prev("li").length) {
-
-				//Does the previous sibling contain a list?
-				prevSiblingList = para.parent().prev("li").find("ul:last-child,ol:last-child");
-				if (prevSiblingList.length) {
-					prevSiblingList.filter(":last").append(para.parent());
-				}
-				else if (para.parent().next("ul,ol").length) {
-					para.next().prepend(para.parent());
-				}
-				else if (para.parent().parent().parent("ul").length) {
-					para.parent().wrap("<ul></ul>");
-
-				}
-				else {
-					para.parent().wrap("<ol></ol>");
-				}
-			}
-
-			else {
-				alert("You can't demote this - turn it into a plan paragraph first"); 
-			}
-		}
-	}
-	else { //Just a <p>
-	  
-		//Is there something we can embed this in?
-		if (para.prev("ul,ol").length){         
-		     para.prev().find("li").filter(":last").append(para);
-		}
-		else if (para.prev("blockquote").length){
-		     para.prev().find("li").filter(":last").append(para);
-		}
-		else if (!para.parent("blockquote").length) {
-			para.wrap("<blockquote></blockquote>");
-			//TODO: Merge adjacent elements
-		}
-		else {
-			alert("Indenting not allowed");
-		}
-	}
-		
-
-
-	detachToolbar();
-   }
+  
  
 
    function populateToolbar() {
- 	toolbar = toolbarFactory();
+ 	toolbar = toolbarFactory("toolbar");
 	jQ(".toolbar").remove();
 	
 	jQ(this).prepend(toolbar);
-	if (jQ(this).filter("h1").length) {
-
-		toolbar.addButton("paragraphify","P");
-		toolbar.addButton(null, "<-");
-		toolbar.addButton("headingDemote","->");
-	} else if (jQ(this).filter("h2,h3,h4").length) {
-		toolbar.addButton("paragraphify","P");
-		toolbar.addButton("headingPromote", "<-");
-		toolbar.addButton("headingDemote","->");
-	} else if (jQ(this).filter("h5").length) {
-		toolbar.addButton("paragraphify","P");
-		toolbar.addButton("headingPromote", "<-");
-		toolbar.addButton(null,"->");
-	}
-	else {
-		toolbar.addButton("headingify", "h");
-		
-	}
+	
+	
+	toolbar.addButton("paragraphify","P");
+	toolbar.addButton("h1", "Heading 1");
+	toolbar.addButton("h2", "Heading 2");
+	toolbar.addButton("h3", "Heading 3");
+	toolbar.addButton("h4", "Heading 4");
+	toolbar.addButton("h5", "Heading 5");
+	toolbar.addButton("more", "More options");
+	toolbar.addButton("x", "[x] Close");
+	
       
 
       // jQ("h1,h2,h3,h4,h5,p").hover( function () {jQ(this).prepend(headingLevelButtons);})
 
 
+   }
+
+   function more() {
+	toolbar = toolbarFactory("more");
+	jQ(".more").remove();	
+	toolbar.addButton("zipall", "Zip");
+	toolbar.addButton("getDocWithDataURIs", "Copy entire doc source");
+	toolbar.addButton("getArticleWithDataURIs", "Copy as article");
+	toolbar.addButton("getSectionWithDataURIs", "Copy as section");
+	toolbar.addButton("clearToolbars", "[x] Close");
+	jQ("body").prepend(toolbar);
+   }
+
+
+  function clearToolbars(){
+	x(jQ("body"));
+  }
+  function x(node) {
+        node.find("#copythis").detach();
+	node.find(".more").remove();
+	node.find(".toolbar").remove();
+  }
+   function getImageData(img) {
+		src = img.attr("src");
+		width = img.attr("width");
+		height = img.attr("height");
+		tempCanvas = jQ("<canvas></canvas>");
+		tempCanvas.attr("height", height);
+		tempCanvas.attr("width", width);
+		drawingContext = tempCanvas.get(0).getContext("2d");
+		
+		drawingContext.drawImage(img.get(0),0,0);
+		//jQ(this).after(tempCanvas);
+		var format;
+		if (src.search(/.png$/)) {
+			format = "image/png";
+		} else {
+			format = "image/jpeg";
+		}
+		var data = tempCanvas.get(0).toDataURL(format);
+		return  data;
+
+   }
+
+
+  function getSectionWithDataURIs() {
+	getWithDataURIs(jQ("<section></section>").html(jQ("article").html()));
+   }
+  function getArticleWithDataURIs() {
+	getWithDataURIs(jQ("article").clone());
+   } 
+
+   function getDocWithDataURIs() {
+	getWithDataURIs(jQ("body").clone())
+   }
+
+  function getWithDataURIs(docToPaste) {
+
+	
+	x(docToPaste);
+	docToPaste.find("img").each( function () { 
+		data = getImageData(jQ(this));
+		jQ(this).attr("src",data);
+	})
+	
+	var copyThis = jQ("<textarea id='copythis'></textarea>");
+
+	copyThis.html(docToPaste.html());
+	jQ("body").prepend(copyThis);
+
+	}
+
+   function zipall() {
+	var zip = new JSZip();
+
+	//TODO - 
+	jQ(".toolbar").detach();
+        fileName = document.location.href.replace(/.*\/(.*)$/, "$1");
+	zip.add(fileName, jQ("html").html());
+	//TODO - optionally add any other local files
+        jQ("img").each( function () {
+		data = getImageData(jQ(this));
+		data = data.replace(/^data:image\/(png|jpg);base64,/, "");
+		
+		zip.add(src, data, {base64: true});
+		tempCanvas = null;
+
+
+	})
+	//img = zip.folder("images");
+	//img.add("smile.gif", imgData, {base64: true});
+	content = zip.generate();
+	location.href="data:application/zip;base64,"+content;
    }
    function makeEditable() {
 	
@@ -521,13 +699,21 @@ function word2HML5Factory(jQ) {
 
 
 	processparas();
+        jQ("span[class^='itemprop']").each(function() {
+		prop = jQ(this).attr("class");
+		prop = prop.replace(/itemprop-/,"");
+		jQ(this).attr("itemprop", prop);
+		jQ(this).removeAttr("class");
+	});
 	
 	//Clean it all up
-	jQ("p:empty").remove();
-	jQ("span:empty").remove();
+	jQ("span[style] *:first-child").unwrap();
+
         
 	jQ("span[mso-spacerun='yes']").remove(); //.replacewith(" ");
-	jQ("o\:p").remove();
+	jQ("o\\:p").remove();
+	jQ("p:empty").remove();
+	jQ("span:empty").remove();
 	jQ("style").remove();
 	jQ("xml").remove();
 	jQ("v:shapetype").remove();
@@ -540,6 +726,19 @@ function word2HML5Factory(jQ) {
    }
    word2html.convert = convert;
    word2html.config = config;
+  
+   if (typeof chrome === 'undefined' ||  typeof chrome.extension === 'undefined')  {
+	logoURL = "http://tools.scholarlyhtml.org/w2html5/w2html5ext/logo-Xalon-ext.png";
+	}
+   else {
+		logoURL = chrome.extension.getURL('logo-Xalon-ext.png');
+			
+		
+   }
+   jQ("body").css("background-image", "url(" + logoURL + ")");
+   jQ("body").css("background-repeat", "no-repeat");
+
+   
    return word2html;
 
 }

@@ -5,12 +5,15 @@
   "browser_action": {
     "default_icon": "icon.png"
   },
-
+	"permissions": [
+  	"<all_urls>"	
+	],
     "content_scripts": [
     {
-      "matches": ["file:///*"],
-      "js": ["jquery.min.js", "w2html5.js", "w2html5-loader.js"],
-       "css": ["w2html5.css"]
+      "matches": ["file:///*", "<all_urls>"],
+      "js": ["jquery.min.js", "w2html5.js", "w2html5-loader.js", "jszip.js"],
+       "css": ["w2html5.css","W3C-WD.css"]
+	
     }
   ]
 }
