@@ -1,9 +1,21 @@
 
-article {
+body {
+	padding-left: 150px;
 	width: 65%;
 }
 
 
+article {
+	padding-top: 30px;	
+}
+	
+
+section {
+	padding-left: 3px;
+	padding-right: 3px;
+	padding-top: 3px;
+	padding-bottom: 3px;
+}
 
 
 #paragraphify, #headingDemote, #headingPromote {

@@ -11,7 +11,7 @@
     "content_scripts": [
     {
       "matches": ["file:///*", "<all_urls>"],
-      "js": ["jquery.min.js", "w2html5.js", "w2html5-loader.js", "jszip.js"],
+      "js": ["jquery.min.js", "json2.js", "jquery.microdata.js", "jquery.microdata.json.js", "w2html5.js", "w2html5-loader.js",  "jszip.js" ],
        "css": ["w2html5.css","W3C-WD.css"]
 	
     }

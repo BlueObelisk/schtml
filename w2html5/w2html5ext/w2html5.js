@@ -34,37 +34,37 @@ function word2HML5Factory(jQ) {
 	config = {};
         config.preMatch = /(courier)|(monospace)/i;
 	config.headingMatches = [
-		[/H(ead)?(ing)? ?1.*/i , "<h2>"],
-		[/H(ead)?(ing)? ?2.*/i , "<h3>"],
-		[/H(ead)?(ing)? ?3.*/i , "<h4>"],
-		[/H(ead)?(ing)? ?4.*/i , "<h5>"],
-		[/(mso)?title/i, "<h1 rel='title'>"]
+		[/H(ead)?(ing)? ?1.*/i , "<h2>", 3],
+		[/H(ead)?(ing)? ?2.*/i , "<h3>", 4],
+		[/H(ead)?(ing)? ?3.*/i , "<h4>", 5],
+		[/H(ead)?(ing)? ?4.*/i , "<h5>", 6],
+		[/^(mso)?title/i, "<h1 rel='title'>", 2]
 	]		
 	
 
 
 
-	function stateFactory(toppara) {
+	function stateFactory(topLevelContainer) {
 
 
 		 //Make the assumption Normal has zero indent
 		  //TODO work out zero indent from Normal style (and deal with negative indents?)
 		var state = {};
-		state.indentStack = [0];
-	 	state.elementStack = [toppara];
-		state.headingLevelStack = [0];
-		
-		state.headingLevel = 0;
+		state.indentStack = [0]; //indents in px
+	 	state.elementStack = [topLevelContainer]; //elements
+		state.headingLevelStack = [1]; //integers
+		state.headingContainerStack = [topLevelContainer]; //elements
+		state.headingLevel = 1;
 		state.currentIndent = 0;
 		function setCurrentIndent(indent) {
 			state.currentIndent = indent;
 		}
 		state.setCurrentIndent = setCurrentIndent;
 
-		function setHeadingIndent(indent) {
+		function setHeadinglevel(indent) {
 			state.headingLevel = indent;
 		}
-		state.setHeadingIndent = setCurrentIndent;
+		state.setHeadinglevel = setHeadinglevel;
 
 		function nestingNeeded() {
 			//Test whether current left=margin indent means we should add some nesting
@@ -74,8 +74,11 @@ function word2HML5Factory(jQ) {
 		state.nestingNeeded = nestingNeeded;
 
 		function headingNestingNeeded() {
-			//Test whether current left=margin indent means we should add some nesting
-			return(state.headingIndent > state.headingStack[state.headingStack.length-1]);
+			//Test whether current left-margin indent means we should add some nesting
+			
+			needed =state.headingLevel > state.headingLevelStack[state.headingLevelStack.length-1];
+			
+			return(needed);
 		
 		}
 		state.headingNestingNeeded = headingNestingNeeded;
@@ -90,9 +93,12 @@ function word2HML5Factory(jQ) {
 		state.levelDown = levelDown;
 
 		function headingLevelDown() {
-			while (state.headingLevel< state.headingStack[state.headingStack.length-1]) {
+			
+			while (state.headingLevel <= state.headingLevelStack[state.headingLevelStack.length-1]) {
 				popHeadingState();
+				
 			}
+			
 			
 		}
 		state.headingLevelDown = headingLevelDown;
@@ -103,7 +109,7 @@ function word2HML5Factory(jQ) {
 		state.getCurrentContainer = getCurrentContainer;
 		
 		function getHeadingContainer() {
-			return state.headingStack[state.headingStack.length-1];
+			return state.headingContainerStack[state.headingContainerStack.length-1];
 		}
 		state.getHeadingContainer = getHeadingContainer;
 		
@@ -116,6 +122,8 @@ function word2HML5Factory(jQ) {
 		function popHeadingState() {
 			state.headingLevelStack.pop();
 			state.headingContainerStack.pop();
+	 		state.indentStack = [0];
+			state.elementStack = [state.getHeadingContainer()];
 		}
 		state.popHeadingState = popHeadingState;
 
@@ -127,54 +135,60 @@ function word2HML5Factory(jQ) {
 		state.pushState = pushState;
 
 
-		function pusHeadingState(el) {
-			state.headingLevelStack.push(state.currentIndent);
+		function pushHeadingState(el) {
+			head = state.headingLevel
+			
+			state.headingLevelStack.push(head);
+			
+		
+			state.getHeadingContainer().append(el);
 			state.headingContainerStack.push(el);
-		}
-		state.pusHeadingState = pusHeadingState;
-
-		function resetState() {
+			
+			
 			state.indentStack = [0];
-			state.elementStack = [state.elementStack[0]];
+			state.elementStack = [el];
 		}
-		state.resetState = resetState;
+		state.pushHeadingState = pushHeadingState;
+
+		
 		return state;
 }
 
 
 	function loseWordMongrelMarkup(doc) {
 			//Deal with MMDs        
-			startComment = /<\!--\[(.*?)\]\>/g;
-			startCommentReplace = "<span title='start-jQ1'/><xml class='mso-conditional'>";
-			doc = doc.replace(startComment, startCommentReplace);
+			var startComment = /<\!--\[(.*?)\](--)?\>/g;
+			//startCommentReplace = "<span title='start-$1'/><xml class='mso-conditional'>";
+			
+			var doc = doc.replace(startComment, "");
 		
-			endComment = /<\!\[(.*?)\]--\>/g;
-			endCommentReplace = "</xml><span title='end-jQ1'/>";
-			doc = doc.replace(endComment, endCommentReplace);
+			var endComment = /<\!\[(.*?)\]--\>/g;
+			//endCommentReplace = "</xml><span title='end-$1'/>";
+			doc = doc.replace(endComment, "");
 
 			//Ordinary conditional comment
-			comment = /<\!--\[(.*?)\]--\>/g;
-			commentReplace = "";
-			doc = doc.replace(startComment, commentReplace);
+			var comment = /<\!--\[(.*?)\]--\>/g;
+			//commentReplace = "xxxxxxxxxxxx";
+			doc = doc.replace(startComment, "");
 		      
-			startMMD = /<\!\[(.*?)\]\>/g;
-			startMMDReplace = "<span title='jQ1'/>";
-			doc = doc.replace(startMMD, startMMDReplace);
+			var startMMD = /<\!\[(.*?)\]\>/g;
+			//startMMDReplace = "<span title='$1'/>";
+			doc = doc.replace(startMMD, "");
 
 
 		
-			endMMD = /<\!\[endif\]>/g;
-			endMMDReplace = "<span title='endif'/>";
-			doc = doc.replace(endMMD, endMMDReplace);
+			var endMMD = /<\!\[endif\]>/g;
+			//endMMDReplace = "<span title='endif'/>";
+			doc = doc.replace(endMMD, "");
 
 			//This is a rare special case, seems to be related to equations
-			wrapblock = /<o:wrapblock>/g;
-			wrapblockreplace = "<span title='wrapblock' ><!-- --></span>";
-			doc = doc.replace(wrapblock, wrapblockreplace);
+			var wrapblock = /<o:wrapblock>/g;
+			//wrapblockreplace = "<span title='wrapblock' ><!-- --></span>";
+			doc = doc.replace(wrapblock, "");
 
-			endwrapblock = /<\/o:wrapblock>/g;
-			endwrapblockreplace = "<span title='end-wrapblock' ><!-- --></span>";
-			doc = doc.replace(endwrapblock, endwrapblockreplace);
+			var endwrapblock = /<\/o:wrapblock>/g;
+			//endwrapblockreplace = "<span title='end-wrapblock' ><!-- --></span>";
+			doc = doc.replace(endwrapblock, "");
 
 		    
 			return doc;	
@@ -193,16 +207,16 @@ function word2HML5Factory(jQ) {
    	function processparas() {
 	  //TODO - recurse into tables
 
-	  //para for our page
-	  para = jQ("<article></article>")	   
-          processpara(jQ("body > *"), para);
+	  //Always wrap carefully
+	  var container = jQ("<article></article>")	   
+          processpara(jQ("body > *"), container);
           //Don't need a containing element for table cell contents
 	  processpara(jQ("td > *"));
 	  processpara(jQ("th > *"));
         }
 
-   function processpara(nodeList, para) {
-      state = stateFactory(para);
+   function processpara(nodeList, container) {
+      var state = stateFactory(container);
       nodeList.each(
 	    
 	    function (index) {
@@ -211,25 +225,46 @@ function word2HML5Factory(jQ) {
 		if (index == 0)  {
 			jQ("body").prepend(state.getCurrentContainer());
                         
+		}	
+		//Table? Add it and get out
+		if (jQ(this).get(0).nodeName === 'TABLE') {
+			state.getCurrentContainer().append(jQ(this));
+			return;
 		}
 		classs = String(jQ(this).attr("class")).toLowerCase();
+		if (classs.search(/-itemprop-/) > -1) {
+			jQ(this).attr("itemprop",classs.replace(/.*-itemprop-/, ""));
+		}
 		// Normalise some styles
-	        nodeName = jQ(this).get(0).nodeName;
-                isHeading = false;
+	        var nodeName = jQ(this).get(0).nodeName;
+                var isHeading = false;
 		//Look for headings via paragraph style
 		config.headingMatches.forEach(
 			function (item) {
 				if (classs.search(item[0]) > -1) {
 					tag = classs.replace(item[0], item[1]);
 					type = "h";
-					state.resetState();
+					headingLevel = item[2];
+					
 				}
 			}
 		);
   		
 		if (nodeName.search(/H\d/) == 0) {
-			state.resetState();
+			headingLevel = parseFloat(nodeName.substring(1,2)) + 1; 
 			type = "h";
+		}
+
+		if (type === 'h') {
+			state.setHeadinglevel(headingLevel);
+			state.headingLevelDown(); //unindent where necessary
+			if (state.headingNestingNeeded()){
+                              
+				state.pushHeadingState(jQ("<section></section>"));
+				
+				
+			}
+
 		}
 		
 		else {
@@ -352,24 +387,13 @@ function word2HML5Factory(jQ) {
 
 				jQ(this).appendTo(state.getCurrentContainer());
 				if (type == "h") {
-					semantics = jQ(this).find("a[href^='http://schema.org/']");
-					if (semantics.length) {
-				
-						rel = semantics.attr("href");
-						
-						jQ(this).parent().attr("itemscope", "");
-						jQ(this).parent().attr("itemprop", rel);
-					}
+					
 					if (tag) {
 						//It's a heading - this replace with stuff doesn't seem to work if you do it before moving the element
 						jQ(this).replaceWith( tag + jQ(this).html());
 
 					} 
-					if (tag && !(tag.search(/title/))) {
-
-						//TODO sort out proper sectional nesting later
-						//jq(this).wrap("<section></section>");
-					}
+					
 					
 			
 				}
@@ -592,9 +616,8 @@ function word2HML5Factory(jQ) {
 	x(jQ("body"));
   }
   function x(node) {
-        node.find("#copythis").detach();
-	node.find(".more").remove();
-	node.find(".toolbar").remove();
+        node.find("#copythis, .more, .toolbar, #source, #microdata").detach();
+	
   }
    function getImageData(img) {
 		src = img.attr("src");
@@ -630,19 +653,16 @@ function word2HML5Factory(jQ) {
 	getWithDataURIs(jQ("body").clone())
    }
 
-  function getWithDataURIs(docToPaste) {
-
+  function getWithDataURIs(el) {
+        elCopy = el.clone();
 	
-	x(docToPaste);
-	docToPaste.find("img").each( function () { 
+	x(elCopy);
+	elCopy.find("img").each( function () { 
 		data = getImageData(jQ(this));
 		jQ(this).attr("src",data);
 	})
-	
-	var copyThis = jQ("<textarea id='copythis'></textarea>");
-
-	copyThis.html(docToPaste.html());
-	jQ("body").prepend(copyThis);
+	//alert(elCopy.html());
+	return elCopy;
 
 	}
 
@@ -668,20 +688,135 @@ function word2HML5Factory(jQ) {
 	content = zip.generate();
 	location.href="data:application/zip;base64,"+content;
    }
-   function makeEditable() {
-	
-	
-	jQ("h1,h2,h3,h4,h5,p").click(populateToolbar);
 
+    function seeData() {
 
-	
-        //TODO - be more selective
-	
-	
+	s = jQ("<span class='microdata'><span class='microdata-button'>{ }</span></span>");
+	s.css({"position":"absolute","dispay" : "block", "left" : "40px", "background-color" : "white"});	
+	s.find(".microdata-button").click(showMicrodata); //, unshowMicrodata);
+	return s;
 	}
+
+
+  function seeSource(container) {
+	var tag = container.get(0).nodeName;
+	var s = jQ("<span class='source'><span class='sourcebutton'>&lt;" + tag  + "></span></span>");
+	s.css({"position":"absolute","dispay" : "block", "left" : "60px", "background-color" : "white"});	
+	
+	s.find('.sourcebutton').click(showSource);
+	return s;
+	}
+
+  function seeTopToolbar() {
+
+	var s = jQ("<span id='toolbar'><span id='button-zip'>Download as zip</span> </span>");
+	s.css({"position":"fixed", "dispay" : "block", "top" : "0px", "width" : "100%", "background-color" : "red", "color":"white"});	
+
+	s.find("#button-zip").click(zipall);
+	return s;
+	}
+
+ function unshowSource() {
+	jQ(this).parent().replaceWith(seeSource(jQ(this).parents("section, article, html").first()));
+	}
+
+  function showSource() {
+	 var el = jQ(this).parents("section, article, html").first();
+         
+	 jQ(this).parent().css({ "dispay" : "block", "background-color" : "gray", "width" : "50%", "height" : "50%"});
+	 
+  	 //el.find("#source").remove();
+  	 var src = getWithDataURIs(el);
+  	 viewer = jQ("<textarea></textarea>");
+	 viewer.css({"background-color" : "white", "width" : "100%", "height" : "100%"});
+	 src.wrap("<div></div>");
+         viewer.html(src.parent().html())		;
+
+         jQ(this).click(unshowSource);
+   	 jQ(this).parent().append(viewer);
+	 jQ(this).find("textarea").select();
+	}
+
+   function unshowMicrodata() {
+
+	jQ(this).parent().replaceWith(seeData());
+	}
+
+   function showMicrodata() {
+	 var el = jQ(this).parents("*[itemscope]").first();
+	 jQ(this).parent().css({"background-color" : "gray", "width" : "50%", "height" : "50%"});
+	
+	
+  	 
+  	 var jsonText = jQ.microdata.json(el, function(o) { return JSON.stringify(o, undefined, 2); });
+  	 var code = jQ("<textarea></textarea>");
+	 code.html(jsonText);
+         code.css({"background-color" : "white", "width" : "100%", "height" : "100%"});
+   	 jQ(this).parent().append(code);
+	 jQ(this).click(unshowMicrodata);
+	 jQ(this).find("textarea").select();
+	}
+
+
+    function makeEditable() {
+	
+	
+	//jQ("h1,h2,h3,h4,h5,p").click(populateToolbar);
+
+        
+	
+	 jQ("section[itemscope], article[itemscope]").prepend(seeData());
+	 jQ("table[itemscope] tr:first-child td:first-child").prepend(seeData());
+	 jQ("tr[itemscope] td:first-child").prepend(seeData());
+
+ 	 jQ("body").prepend(seeTopToolbar());
+	 jQ("section, article, body").each(function() {jQ(this).prepend(seeSource(jQ(this)))});
+      
+	
+	  
+	}
+
+
+	
+   function removeTableFormatting(el) {
+        el.wrap("<div></div>");
+	el2 = el.parent();
+	el2.find("*[style]").removeAttr("style");
+	//el2.find("*[border]").removeAttr("border");
+	el2.find("*[cellspacing]").removeAttr("cellspacing");
+	el2.find("*[cellpadding]").removeAttr("cellpadding");
+	el2.find("*[width]").removeAttr("width");
+	//el2.find("*[colspan]").removeAttr("colspan");
+	el2.find("*[height]").removeAttr("height");
+	el2.find("*[valign]").removeAttr("valign");
+	el.unwrap();	
+	el.removeAttr("class");
+   }
+
+
+  function removeMsoTableFormatting(el) {
+        
+        el.wrap("<div></div>");
+	el2 = el.parent();
+	el2.find("*[style]").each( function () {
+		
+                style = el.attr("style");
+		
+		style = style.replace(/mso-[\s\S]*(\;|$)?/g,"");
+		
+		el.attr("style",style);
+                
+	});
+	
+	el.unwrap();	
+	el.removeAttr("class");
+   }
 
    function convert() {
 	//Start by string-processing MSO markup into something we can read and reloading
+	if (jQ("article").length) {
+		return ;
+	}
 	jQ("head").html(loseWordMongrelMarkup(jQ("head").html()));
 
 	jQ("body").html(loseWordMongrelMarkup(jQ("body").html()));
@@ -695,34 +830,98 @@ function word2HML5Factory(jQ) {
 	function(index) {
 	   jQ(this).children(":first-child").unwrap();
 	}
-	)
+	
+	);
+	
+
+	
 
 
 	processparas();
-        jQ("span[class^='itemprop']").each(function() {
-		prop = jQ(this).attr("class");
+
+	//Add Schema.org markup
+
+	jQ("table[summary^='itemprop']").each(function() {
+		prop = jQ(this).attr("summary");
 		prop = prop.replace(/itemprop-/,"");
 		jQ(this).attr("itemprop", prop);
-		jQ(this).removeAttr("class");
+		jQ(this).removeAttr("summary");
+	});
+	
+	//Wordprocessor microformat - needs work.
+	jQ("a[href^='http://schema.org/']").each(function() {
+		var href = jQ(this).attr("href");
+		container = jQ(this).parents("tr:not(:first-child),table,section,article,body").first();
+		//Use spit on '?' instead?
+		
+		typeProp = href.split("?itemprop=");
+		container.attr("itemtype", typeProp[0]);
+		if (typeProp.length == 2) {
+			jQ(container).attr("itemprop", typeProp[1]);
+		}
+		
+		container.attr("itemscope", "itemscope");
+		jQ(this).replaceWith(jQ(this).html());
+		
+	});
+
+
+        jQ("*[class^='itemprop-']").each(function() {
+		prop = jQ(this).attr("class");
+		prop = prop.replace(/itemprop-/,"");
+		inHeading = jQ(this)	.parent("h1,h2,h3,h4,h5");
+		if  (inHeading.length) {
+			//Itemprop on a heading means it applies 
+			container.get(0).attr("itemprop", prop);
+			jQ(this).find("*:first").unwrap();
+		}
+
+		else {
+			container = jQ(this);
+
+		}
+		container.attr("itemprop", prop);
+		container.removeAttr("class");
 	});
 	
 	//Clean it all up
-	jQ("span[style] *:first-child").unwrap();
+	//jQ("span[style] *:first-child").unwrap();
 
         
 	jQ("span[mso-spacerun='yes']").remove(); //.replacewith(" ");
-	jQ("o\\:p").remove();
-	jQ("p:empty").remove();
-	jQ("span:empty").remove();
-	jQ("style").remove();
-	jQ("xml").remove();
+	jQ("o\\:p, p:empty, span:empty,style, link, meta,xml").remove();
+	
+	jQ("span[style]:first-child").unwrap();
+        
+	
+	
 	jQ("v:shapetype").remove();
 	jQ("span[class='SpellE']").each(function(i) {$(this).replaceWith($(this).html()	)});
 	jQ("span[class='GramE']").each(function(i) {$(this).replaceWith($(this).html()	)});
+	html = jQ("html");
+ 	html.removeAttr("xmlns");
+	html.removeAttr("xmlns:v");
+	html.removeAttr("xmlns:o");
+	html.removeAttr("xmlns:w");
+	html.removeAttr("xmlns:m");
+        body = html.find("body");
+	body.removeAttr("link");
+	body.removeAttr("vlink");
 
+	//Clean up tables
+	jQ("table").each( function() {
+		summary = jQ(this).attr("summary");
+		if (summary && jQ(this).attr("summary").replace(/^noformat/, "") != summary) {
+			removeTableFormatting(jQ(this));
+		} else {
+			removeMsoTableFormatting(jQ(this));
+		}
+	});
 	//TODO make this configurable
 	jQ("span[lang^='EN']").each(function(i) {$(this).replaceWith($(this).html()	)});
         makeEditable();
+
+	 
    }
    word2html.convert = convert;
    word2html.config = config;
@@ -734,9 +933,11 @@ function word2HML5Factory(jQ) {
 		logoURL = chrome.extension.getURL('logo-Xalon-ext.png');
 			
 		
-   }
+   }	
    jQ("body").css("background-image", "url(" + logoURL + ")");
    jQ("body").css("background-repeat", "no-repeat");
+  
+   
 
    
    return word2html;
